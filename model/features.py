@@ -2,7 +2,7 @@ import math
 from difflib import SequenceMatcher
 import numpy as np
 
-MAX_REQ_MEMORY = 7 # requests
+MAX_REQ_MEMORY = 15 # requests
 
 def string_entropy(string):
     # Returns Shannon entropy normalized between 0 and 1
@@ -36,6 +36,9 @@ class Features():
     accept_language_entropy: float
     accept_entropy: float
     burstiness: float
+    memory: float
+
+    _req_num: int
 
     def as_np_array(self):
         return np.array([
@@ -47,6 +50,7 @@ class Features():
             self.accept_language_entropy,
             self.accept_entropy,
             self.burstiness,
+            self.memory
         ], dtype=float)
 
     def __str__(self):
@@ -75,7 +79,7 @@ def extract_features(timestamp, request, real_ip):
         request_timestamps[real_ip] = []
         is_first_request = True
 
-    if (len(request_timestamps[real_ip]) >= MAX_REQ_MEMORY):
+    if (len(request_timestamps[real_ip]) > MAX_REQ_MEMORY):
         request_timestamps[real_ip].pop(0)
 
     request_timestamps[real_ip].append(timestamp)
@@ -94,11 +98,19 @@ def extract_features(timestamp, request, real_ip):
     features.accept_language_entropy = string_entropy(request.headers["accept-language"] if "accept-language" in request.headers else "")
     features.accept_entropy = string_entropy(request.headers["accept"] if "accept" in request.headers else "")
 
-    # Bursts
+    # Burstiness and memory coefficients
     # Formula from DOI 10.1209/0295-5075/81/48002
     # Burstiness and memory in complex systems - Goh & Barabási, 2008
     features.burstiness = (features.stdev_time_between_requests - features.mean_time_between_requests) / (features.stdev_time_between_requests + features.mean_time_between_requests)
+    if len(times) < 2 or features.stdev_time_between_requests <= 0:
+        features.memory = 0.0
+    else:
+        num = np.sum((times[:-1] - features.mean_time_between_requests) * (times[1:] - features.mean_time_between_requests))
+        denom = (len(times) - 1) * (features.stdev_time_between_requests ** 2)
+
+        features.memory = num / denom
 
     last_uris[real_ip] = request.uri
+    features._req_num = len(times)
 
     return features

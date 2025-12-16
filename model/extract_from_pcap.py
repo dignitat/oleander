@@ -48,6 +48,7 @@ def write_csv():
         "accept_language_entropy",
         "accept_entropy",
         "burstiness",
+        "memory"
     ]
 
     # Combine bots and users
@@ -63,6 +64,7 @@ def write_csv():
             getattr(f, "accept_language_entropy", -1),
             getattr(f, "accept_entropy", -1),
             getattr(f, "burstiness", -1),
+            getattr(f, "memory", -1),
         ])
         all_features.append(row)
 
@@ -77,6 +79,7 @@ def write_csv():
             getattr(f, "accept_language_entropy", -1),
             getattr(f, "accept_entropy", -1),
             getattr(f, "burstiness", -1),
+            getattr(f, "memory", -1),
         ])
         all_features.append(row)
 
