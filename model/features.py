@@ -94,9 +94,11 @@ def extract_features(timestamp, request, real_ip):
     features.accept_language_entropy = string_entropy(request.headers["accept-language"] if "accept-language" in request.headers else "")
     features.accept_entropy = string_entropy(request.headers["accept"] if "accept" in request.headers else "")
 
-    # Bursts (formula from Goh & Barabási, 2008)
+    # Bursts
+    # Formula from DOI 10.1209/0295-5075/81/48002
+    # Burstiness and memory in complex systems - Goh & Barabási, 2008
     features.burstiness = (features.stdev_time_between_requests - features.mean_time_between_requests) / (features.stdev_time_between_requests + features.mean_time_between_requests)
-    
+
     last_uris[real_ip] = request.uri
 
     return features
