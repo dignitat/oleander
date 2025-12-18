@@ -2,7 +2,7 @@ import math
 from difflib import SequenceMatcher
 import numpy as np
 
-MAX_REQ_MEMORY = 15 # requests
+MAX_REQ_MEMORY = 10 # requests
 
 def string_entropy(string):
     # Returns Shannon entropy normalized between 0 and 1

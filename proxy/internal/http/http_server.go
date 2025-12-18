@@ -5,17 +5,19 @@ import (
 	"net/http"
 	"time"
 
+	"dignitat/oleander/internal/inference"
 	"dignitat/oleander/internal/models"
 )
 
 type HTTPServer struct {
-	IP     string
-	Port   int
-	Target string
+	IP        string
+	Port      int
+	Target    string
+	predictor *inference.Predictor
 }
 
-func NewHTTPServer(config *models.Config) *HTTPServer {
-	return &HTTPServer{config.Host, config.Port, config.Target}
+func NewHTTPServer(config *models.Config, predictor *inference.Predictor) *HTTPServer {
+	return &HTTPServer{config.Host, config.Port, config.Target, predictor}
 }
 
 func (h *HTTPServer) ServeHTTP() {
@@ -23,7 +25,7 @@ func (h *HTTPServer) ServeHTTP() {
 		ReadHeaderTimeout: 20 * time.Second,
 		WriteTimeout:      2 * time.Minute,
 		ReadTimeout:       1 * time.Minute,
-		Handler:           NewOleanderHandler(h.Target),
+		Handler:           NewOleanderHandler(h.Target, h.predictor),
 		Addr:              fmt.Sprintf("%s:%d", h.IP, h.Port),
 	}
 

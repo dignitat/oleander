@@ -8,11 +8,12 @@ import (
 
 func main() {
 
-	config := models.NewConfig("0.0.0.0", 8080, "http://127.0.0.1:8000")
+	config := models.NewConfig("0.0.0.0", 8080, "https://example.com")
 
 	predictor := inference.NewPredictor()
+	predictor.LoadModel("model.onnx")
 	defer predictor.Destroy()
 
-	server := http.NewHTTPServer(config)
+	server := http.NewHTTPServer(config, predictor)
 	server.ServeHTTP()
 }

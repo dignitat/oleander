@@ -1,27 +1,39 @@
 package http
 
 import (
+	"dignitat/oleander/internal/inference"
+	"dignitat/oleander/internal/logging"
 	"io"
 	"net/http"
 	"time"
 )
 
 type OleanderHandler struct {
-	Target string
+	Target    string
+	predictor *inference.Predictor
 }
 
-func NewOleanderHandler(target string) *OleanderHandler {
-	return &OleanderHandler{target}
+func NewOleanderHandler(target string, predictor *inference.Predictor) *OleanderHandler {
+	return &OleanderHandler{target, predictor}
 }
 
 func (h *OleanderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	realAddr := h.getIPAddress(r)
+
+	botProb := h.predictor.Predict(r, realAddr)
+	defer logging.LogRequest(r, botProb)
+
+	if botProb > 0.15 {
+		http.Error(w, "nope", http.StatusForbidden)
+		return
+	}
 
 	// TODO: Pass through AI model
 
 	response := h.forwardRequest(w, r, h.Target, realAddr)
 	if response == nil {
 		// TODO: Log request with error
+		return
 	}
 
 	h.forwardResponse(w, r, response)
@@ -41,7 +53,8 @@ func (h *OleanderHandler) forwardRequest(
 	client := &http.Client{
 		Timeout: time.Second * 45,
 		Transport: &http.Transport{
-			MaxIdleConns:          100,
+			MaxIdleConns:          1000,
+			MaxIdleConnsPerHost:   100,
 			IdleConnTimeout:       30 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
