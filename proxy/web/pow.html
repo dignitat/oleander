@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{%title%}</title>
+</head>
+<body>
+
+    <style>
+        :root {
+            --color-primary: #ffff;
+            --color-text: #ffff;
+            --color-bg: #0e0e0e;
+
+            --page-width: 80ch;
+        }
+
+        @media screen and (max-width: 599px) {
+            :root {
+                --page-width: calc(100% - 2rem);
+            } 
+        }
+
+        body {
+            background-color: var(--color-bg);
+            color: var(--color-text);
+        }
+
+        .wrap {
+            display: flex;
+            flex-direction: column;
+            max-width: var(--page-width);
+            height: 100%;
+
+            align-items: center;
+            justify-content: center;
+
+            padding-block: 2rem;
+
+            margin-inline: auto;
+        }
+
+        .logo {
+            max-height: 10rem;
+            fill: var(--color-primary);
+        }
+
+        .title {
+            color: var(--color-primary);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .sep {
+            background-color: var(--color-text);
+            width: 80%;
+            height: 2px;
+        }
+
+        .disclaimer {
+            margin-top: 2rem;
+        }
+
+        .content {
+            text-align: justify;
+        }
+
+        @media screen and (max-width: 599px) {
+            .title {
+                font-size: 28px;
+            }
+        }
+
+
+    </style>
+    
+    <div class="wrap">
+        <svg class="logo" width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"><path d="M3,13A9,9 0 0,0 12,22A9,9 0 0,0 3,13M12,22A9,9 0 0,0 21,13A9,9 0 0,0 12,22M18,3V8A6,6 0 0,1 12,14A6,6 0 0,1 6,8V3C6.74,3 7.47,3.12 8.16,3.39C8.71,3.62 9.2,3.96 9.61,4.39L12,2L14.39,4.39C14.8,3.96 15.29,3.62 15.84,3.39C16.53,3.12 17.26,3 18,3Z" /></svg>
+        <h1 class="title">Checking your browser before accessing...</h1>
+
+        <div class="sep"></div>
+
+        <p class="disclaimer">If you are a human please ignore the following text:</p>
+        <section class="content">
+            <p>In August 2017, the Unicode Consortium announced a list of 67 candidates that could potentially become standard emojis the following year. Among them was a candidate lobster, which was noticed by Maine businessman Luke Holden, founder of the restaurant chain Luke's Lobsters. Holden created a petition on Change.org to "Make the Lobster Emoji Happen", which attracted 1,500 signatures in the first day;[2] people were frustrated that at the time, the only crustacean emojis available were the crab and shrimp emojis.[3] U.S. Senator Angus King of Maine wrote to the Unicode Consortium the next month[4] to support the push for a lobster emoji, observing that there were more lobster-related queries in Internet traffic data than for crabs.[5] He also observed that lobster was Maine's largest export; the state had exported $382 million in lobsters the previous year ($500.00 million in 2024).[6]</p>
+            <p>The Consortium announced in February 2018 that they would add Lobster, alongside 156 other emojis, as part of Unicode 11.0.[7] Users on Twitter pointed out that the draft design, which was created by Emojipedia and published on Unicode's website, had two legs missing and a malformed tail; the design on the Change.org petition had all ten legs, including the claws. Within the month, Emojipedia released an updated design for Lobster, which corrected the anatomical mistakes.[8][9] An article published in Popular Science criticized the reaction to the initial design, arguing that emojis should be designed with their eventual use in mind, not anatomical accuracy; the article also pointed out that most users would not see either design, since different platforms implement their own designs of the emojis on Unicode's list, while Unicode just ensures cross-platform compatibility</p>
+        </section>
+    </div>
+
+    <script>
+
+        function processTask() {
+            return function () {
+                function sha256(text) {
+                    return new Promise((resolve, reject) => {
+                        let buffer = (new TextEncoder).encode(text);
+
+                        crypto.subtle.digest('SHA-256', buffer.buffer).then(result => {
+                            resolve(Array.from(new Uint8Array(result)).map(
+                                c => c.toString(16).padStart(2, '0')
+                            ).join(''));
+                        }, reject);
+                    });
+                }
+
+                addEventListener('message', async (event) => {
+                    let data = event.data.data;
+                    let difficulty = event.data.difficulty;
+
+                    let hash;
+                    let nonce = 0;
+                    do {
+                        hash = await sha256(data + ++nonce);
+                    } while(hash.substr(hash.length - difficulty, hash.length) !== Array(difficulty + 1).join('0'));
+
+                    postMessage({ 
+                        hash,
+                        data,
+                        nonce
+                    });
+                });
+            }.toString();
+        }
+
+
+        function process(data, difficulty = 3) {
+            return new Promise((resolve, reject) => {
+                let webWorkerURL = URL.createObjectURL(new Blob([
+                    '(', processTask(), ')()'
+                ], { type: 'application/javascript' }));
+
+                let worker = new Worker(webWorkerURL);
+
+                worker.onmessage = (event) => {
+                    worker.terminate();
+                    resolve(event.data);
+                };
+
+                worker.onerror = (event) => {
+                    worker.terminate();
+                    reject();
+                };
+
+                worker.postMessage({
+                    data,
+                    difficulty
+                });
+
+                URL.revokeObjectURL(webWorkerURL);
+            });
+        }
+
+        async function main() {
+            console.time("pow")
+            process("{%data%}", {%difficulty%}) // 3 character word
+            .then((ev) => {
+                console.timeEnd("pow")
+
+                fetch("{%url%}", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        "hash": ev.hash,
+                        "nonce": ev.nonce
+                    })
+                }).then(resp => resp.json())
+                .then(json => {
+                    console.log(json);
+                })
+                .catch(e => {
+                    console.error(e);
+                })
+            })
+        }
+
+        main();
+
+    </script>
+
+</body>
+</html>

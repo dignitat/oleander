@@ -3,32 +3,41 @@ package http
 import (
 	"dignitat/oleander/internal/inference"
 	"dignitat/oleander/internal/logging"
+	"dignitat/oleander/internal/pow"
 	"io"
 	"net/http"
 	"time"
 )
 
 type OleanderHandler struct {
-	Target    string
-	predictor *inference.Predictor
+	Target     string
+	predictor  *inference.Predictor
+	powManager *pow.POWManager
 }
 
 func NewOleanderHandler(target string, predictor *inference.Predictor) *OleanderHandler {
-	return &OleanderHandler{target, predictor}
+	return &OleanderHandler{target, predictor, pow.NewPOWManager()}
 }
 
 func (h *OleanderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	realAddr := h.getIPAddress(r)
 
-	botProb := h.predictor.Predict(r, realAddr)
-	defer logging.LogRequest(r, botProb)
-
-	if botProb > 0.15 {
-		http.Error(w, "nope", http.StatusForbidden)
+	if _, val := h.powManager.IsValidChallengeURL(r.RequestURI, r.Method); val {
+		h.powManager.HandleHTTP(w, r, false)
+		defer logging.LogRequest(r, 0)
 		return
 	}
 
-	// TODO: Pass through AI model
+	botProb := h.predictor.Predict(r, realAddr)
+	defer logging.LogRequest(r, botProb)
+
+	h.powManager.HandleHTTP(w, r, true)
+	return
+
+	/*if botProb > 0.15 {
+		h.powManager.HandleHTTP(w, r, true)
+		return
+	}*/
 
 	response := h.forwardRequest(w, r, h.Target, realAddr)
 	if response == nil {

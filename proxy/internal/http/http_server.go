@@ -16,7 +16,8 @@ type HTTPServer struct {
 	predictor *inference.Predictor
 }
 
-func NewHTTPServer(config *models.Config, predictor *inference.Predictor) *HTTPServer {
+func NewHTTPServer(predictor *inference.Predictor) *HTTPServer {
+	config := models.GetConfig()
 	return &HTTPServer{config.Host, config.Port, config.Target, predictor}
 }
 
